@@ -1,0 +1,33 @@
+
+```{r}
+library(soundgen)
+library(tuneR)
+library(seewave)
+setwd('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/')
+```
+
+multivariate visualization
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+wav_file = readWave("Test Birds from Kasios wav/12.wav")
+env(wav_file)
+oscillo(wav_file)
+str(wav_file)
+
+wav_file_ab = readWave("ALL BIRDS wav/Green-Tipped-Scarlet-Pipit-174547.wav")
+env(wav_file_ab)
+oscillo(wav_file_ab)
+```
+

@@ -1,0 +1,94 @@
+
+```{r}
+library(soundgen)
+library(tuneR)
+library(seewave)
+setwd('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace')
+```
+
+Test Birds from Kasios
+```{r}
+#r <- readMP3("1.mp3")  ## MP3 file in working directory
+#writeWave(r,"Test Birds from Kasios wav/tmp.wav",extensible=FALSE)
+
+files_test = list.files(pattern = "*.mp3", path = "Test Birds from Kasios")
+
+for (file in files_test){
+  #move to MP3 folder
+  setwd('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/Test Birds from Kasios')
+  r <- readMP3(file)  ## MP3 file in working directory
+  
+  #move to wav folder
+  setwd('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/Test Birds from Kasios wav')
+  file_name = paste(sub('\\.mp3$', '', file), ".wav", sep ="")
+  print(file_name)
+  #r_norm = normalize(r)
+  #writeWave(r,file_name,extensible=FALSE)
+  savewav(r,filename = file_name)
+}
+```
+
+
+```{r}
+my_folder = '/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/Test Birds from Kasios wav'
+s_test = analyzeFolder(my_folder, verbose = TRUE)
+```
+
+```{r}
+write.table(as.data.frame(s_test),file="test_birds_from_kasios_wav.csv", quote=F,sep=",",row.names=F)
+```
+
+
+
+ALL BIRDS
+```{r}
+files_all = list.files(pattern = "*.mp3", path = "ALL BIRDS")
+
+for (file in files_all){
+  #move to MP3 folder
+  setwd('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/ALL BIRDS')
+  r <- readMP3(file)  ## MP3 file in working directory
+  
+  #move to wav folder
+  setwd('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/ALL BIRDS wav')
+  file_name = paste(sub('\\.mp3$', '', file), ".wav", sep ="")
+  print(file_name)
+  #r_norm = normalize(r)
+  #writeWave(r,file_name,extensible=FALSE)
+  savewav(r,filename = file_name)
+}
+```
+
+find list of file id
+```{r}
+audio_list= read.csv('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/AllBirdsv4.csv')
+clear_list = audio_list[which(audio_list$Quality=='A'), ][,1:2]
+
+audio_selected_list <- clear_list[,1]
+```
+
+
+```{r}
+from_path = '/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/ALL BIRDS wav/'
+to_path = '/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/ALL BIRDS wav selected'
+
+for (file_id in audio_selected_list){
+  file_found = list.files('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/ALL BIRDS wav', pattern=paste('.', file_id,'.',sep =''))
+  
+  from = paste(from_path,file_found[1], sep='')
+  to = to_path
+  print(file_found[1])
+  file.copy(from, to)
+}
+```
+
+
+only analyse those high quality wav files
+```{r}
+my_folder = '/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/ALL BIRDS wav selected'
+s_all = analyzeFolder(my_folder, verbose = TRUE)
+```
+
+```{r}
+write.table(as.data.frame(s_all),file="all_birds_wav.csv", quote=F,sep=",",row.names=F)
+```

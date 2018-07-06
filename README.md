@@ -1,1 +1,1 @@
-# B6_Visual_Analytics
+# B6 Visual Analytics

@@ -1,0 +1,191 @@
+Load packages
+```{r}
+packages = c("corrplot","ggpubr","GGally","tidyverse", "nnet","caret", "MLmetrics", "rpart.plot","ggplot2")
+for (p in packages) {
+  # 'require' checks whether package exists and returns TRUE or FALSE
+  if (!require(p, character.only = T)) {
+    install.packages(p)
+  }
+  library(p, character.only = T)
+}
+setwd('/Users/runyuwang/Google Drive/Visual Analytics/Assignment/Assignment Workspace/')
+
+all_bird_file = 'all_birds_wav.csv'
+test_bird_file = 'test_birds_from_kasios_wav.csv'
+```
+
+Load all bird file and test bird file
+```{r}
+all_bird_data = read_csv(all_bird_file)
+test_bird_data = read_csv(test_bird_file) 
+```
+
+Add English Name Column for all bird dataframe
+```{r}
+#find string before .wav
+new_cols= str_split_fixed(all_bird_data$sound, '.wav', n = Inf)
+
+#remove file id (numerical value)
+new_cols =as.data.frame(word(all_bird_data$sound,1,sep = "\\d"))
+
+#assign column name
+colnames(new_cols) = 'English_Name'
+
+#remove delimiter
+#convert English Name to char, as below needs to use char to compare
+data = data.frame(lapply(new_cols, function(x) {gsub("-", " ", x)}),stringsAsFactors=FALSE)
+all_bird_data = cbind(data, all_bird_data)
+```
+
+EDA, Remove NA and Remove Column Sound
+```{r}
+#drop columns with NA value
+drops = c('pitchCep_mean', 'pitchCep_median', 'pitchCep_sd')
+all_bird_data = all_bird_data[,!names(all_bird_data) %in% drops]
+test_bird_data = test_bird_data[,!names(test_bird_data) %in% drops]
+
+#count number of NA values per column in all_bird_data
+colSums(is.na(all_bird_data))
+#explore NA value in each row
+all_bird_data[rowSums(is.na(all_bird_data))>0,]
+
+#count number of NA values per column in test_bird_data
+colSums(is.na(test_bird_data))
+#explore NA value in each row
+test_bird_data[rowSums(is.na(test_bird_data))>0,]
+
+#omit rows with NA value
+all_bird_data <- na.omit(all_bird_data)
+
+#remove column sound
+drops = c('sound')
+all_bird_data = all_bird_data[,!names(all_bird_data) %in% drops]
+test_bird_data=test_bird_data[,!names(all_bird_data) %in% drops]
+```
+
+
+```{r}
+#create target variable for Pipit or Not Pipit
+all_bird_data$target = 'not rose pipit'
+all_bird_data$target[all_bird_data$English_Name == 'Rose Crested Blue Pipit '] = 'rose pipit'
+
+#move target column to the 1st position
+all_bird_data = all_bird_data[,c(70, 1:69)]
+
+data_x = all_bird_data[,-c(1,2)]
+data_y = all_bird_data[1]
+```
+
+split data
+```{r}
+set.seed(2018)
+data_y$target = as.factor(data_y$target)
+
+#merge data_y and data_x for data part
+train_data= cbind(data_y, data_x)
+data_part <- createDataPartition(y = train_data$target, 
+                                 p = 0.7, list = F)
+
+x_train = train_data[data_part,][,-1]
+y_train = train_data[data_part,][1]
+
+x_test = train_data[-data_part,][,-1]
+y_test = train_data[-data_part,][1]
+```
+
+classification model 1: random Forest
+```{r}
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+
+rf <- train(x= x_train, y=y_train[,1], method = "rf",
+                 trControl=trctrl,
+                 tuneLength = 10)
+
+y_pred = predict(rf,x_test)
+
+Accuracy(y_pred, y_test$target)
+Precision(y_test$target,y_pred)
+Recall(y_test$target,y_pred)
+```
+
+classification model 2: decision tree
+```{r}
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+
+dt <- train(x= x_train, y=y_train[,1], method = "rpart",
+                 trControl=trctrl,
+                 tuneLength = 10)
+
+y_pred = predict(dt,x_test)
+
+Accuracy(y_pred, y_test$target)
+Precision(y_test$target,y_pred)
+Recall(y_test$target,y_pred)
+```
+visualize decision tree
+```{r}
+rpart.plot(dt$finalModel)
+```
+
+use random forest to predict test audio files
+```{r}
+result_rf = predict(rf,test_bird_data[-1])
+cbind(test_bird_data[1], result_rf)
+```
+
+use decision tree to predict test audio files
+```{r}
+result_dt = predict(dt,test_bird_data[-1])
+cbind(test_bird_data[1], result_dt)
+```
+
+Visual Analytics Method
+Remove highly correlated columns at first, too many variables makes it diffcult to visualize
+```{r}
+data_x = all_bird_data[,c(-1,-2)]
+data_y = all_bird_data[1]
+data_en_name = all_bird_data[2]
+
+corr_mat = cor(data_x)
+high_corr = findCorrelation(corr_mat, cutoff = 0.6, exact = FALSE)
+data_x_reduced = data_x[,-c(high_corr)]
+
+```
+
+Apply Corrplot
+```{r}
+y = cor(data_x_reduced)
+corrplot(y, order = "hclust", addrect = 12)
+```
+
+remove features based on corr plot observations
+Corrplot, select variables, we not only consider to check the variables nearby, but all the variables
+For example, group of 'specSlape_sd', 'harmonics_median', 'peakFreq_median', I choose 'peakFreq_median'.
+
+```{r}
+drops = c('specSlope_sd','harmonics_median', 'f2_width_median', 'pitchSpec_median', 'f1_width_sd', 'peakFreqCut_sd','dom_sd','quartile25_sd','f3_width_sd','HNR_sd', 'pitchSpec_sd', 'harmonics_sd', 'pitch_sd')
+data_x_reduced = data_x_reduced[,!names(data_x_reduced) %in% drops]
+
+#drop variables which are not ideal for visual analytics
+#reduce number of features to a managable level
+drops = c('amplVoiced_median', 'duration', 'entropy_mean','entropy_sd', 'HNR_median','specSlope_median','voiced' )
+data_x_reduced = data_x_reduced[,!names(data_x_reduced) %in% drops]
+```
+
+trellis density plot
+```{r}
+data_reduced = cbind(data_y, data_en_name,data_x_reduced)
+
+data_plot = data_reduced %>%
+  group_by(English_Name) %>%
+  gather(variable, value, colnames(data_x_reduced)) %>% 
+  dplyr::select(English_Name,variable,value)
+
+ggplot(data_plot,aes(x=value,y=..scaled..,fill=variable))+
+  geom_density()+
+  facet_grid(English_Name~variable,scales='free')+
+    theme(strip.text.y = element_text(angle = 0, hjust = 0)) +
+    theme(legend.position="none")
+
+```
+
